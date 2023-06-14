@@ -37,6 +37,25 @@ class EnsureBillingTest < ActionController::TestCase
     ShopifyAppConfigurer.setup_context
   end
 
+  test "billing configuration with test charges default" do
+    ShopifyApp.configuration.billing = ShopifyApp::BillingConfiguration.new(
+      charge_name: TEST_CHARGE_NAME,
+      amount: 5,
+      interval: ShopifyApp::BillingConfiguration::INTERVAL_ONE_TIME,
+    )
+    assert(ShopifyApp.configuration.billing.test)
+  end
+
+  test "billing configuration with real" do
+    ShopifyApp.configuration.billing = ShopifyApp::BillingConfiguration.new(
+      charge_name: TEST_CHARGE_NAME,
+      amount: 5,
+      interval: ShopifyApp::BillingConfiguration::INTERVAL_ONE_TIME,
+      test: false,
+    )
+    assert_not(ShopifyApp.configuration.billing.test)
+  end
+
   test "requires single payment if none exists and non recurring" do
     ShopifyApp.configuration.billing = ShopifyApp::BillingConfiguration.new(
       charge_name: TEST_CHARGE_NAME,
@@ -56,7 +75,7 @@ class EnsureBillingTest < ActionController::TestCase
 
     get :index
 
-    assert_redirected_to(%r{^https://totally-real-url})
+    assert_client_side_redirection "https://totally-real-url"
 
     get :index, xhr: true
 
@@ -93,7 +112,7 @@ class EnsureBillingTest < ActionController::TestCase
 
     get :index
 
-    assert_redirected_to(%r{^https://totally-real-url})
+    assert_client_side_redirection "https://totally-real-url"
 
     get :index, xhr: true
 
@@ -159,7 +178,7 @@ class EnsureBillingTest < ActionController::TestCase
 
     get :index
 
-    assert_redirected_to(%r{^https://totally-real-url})
+    assert_client_side_redirection "https://totally-real-url"
 
     get :index, xhr: true
 
@@ -203,6 +222,12 @@ class EnsureBillingTest < ActionController::TestCase
   end
 
   private
+
+  def assert_client_side_redirection(url)
+    assert_response :success
+    assert_match "Redirecting", response.body
+    assert_match(url, response.body)
+  end
 
   def stub_graphql_requests(*requests)
     requests.each do |request|

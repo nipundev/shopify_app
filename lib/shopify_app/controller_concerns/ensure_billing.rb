@@ -30,6 +30,8 @@ module ShopifyApp
           add_top_level_redirection_headers(url: confirmation_url, ignore_response_code: true)
           ShopifyApp::Logger.debug("Responding with 401 unauthorized")
           head(:unauthorized)
+        elsif ShopifyApp.configuration.embedded_app?
+          fullpage_redirect_to(confirmation_url)
         else
           redirect_to(confirmation_url, allow_other_host: true)
         end
@@ -134,7 +136,7 @@ module ShopifyApp
             },
           },
           returnUrl: return_url,
-          test: !Rails.env.production?,
+          test: ShopifyApp.configuration.billing.test,
         },
       )
 
@@ -152,7 +154,7 @@ module ShopifyApp
             currencyCode: ShopifyApp.configuration.billing.currency_code,
           },
           returnUrl: return_url,
-          test: !Rails.env.production?,
+          test: ShopifyApp.configuration.billing.test,
         },
       )
 
@@ -174,7 +176,7 @@ module ShopifyApp
       response
     end
 
-    RECURRING_PURCHASES_QUERY = <<~'QUERY'
+    RECURRING_PURCHASES_QUERY = <<~QUERY
       query appSubscription {
         currentAppInstallation {
           activeSubscriptions {
@@ -184,7 +186,7 @@ module ShopifyApp
       }
     QUERY
 
-    ONE_TIME_PURCHASES_QUERY = <<~'QUERY'
+    ONE_TIME_PURCHASES_QUERY = <<~QUERY
       query appPurchases($endCursor: String) {
         currentAppInstallation {
           oneTimePurchases(first: 250, sortKey: CREATED_AT, after: $endCursor) {
@@ -201,7 +203,7 @@ module ShopifyApp
       }
     QUERY
 
-    RECURRING_PURCHASE_MUTATION = <<~'QUERY'
+    RECURRING_PURCHASE_MUTATION = <<~QUERY
       mutation createPaymentMutation(
         $name: String!
         $lineItems: [AppSubscriptionLineItemInput!]!
@@ -222,7 +224,7 @@ module ShopifyApp
       }
     QUERY
 
-    ONE_TIME_PURCHASE_MUTATION = <<~'QUERY'
+    ONE_TIME_PURCHASE_MUTATION = <<~QUERY
       mutation createPaymentMutation(
         $name: String!
         $price: MoneyInput!
